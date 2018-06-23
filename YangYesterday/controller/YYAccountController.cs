@@ -134,8 +134,34 @@ namespace YangYesterday.controller
         }
 
         public void Transfer()
-        {
-            
+        {            
+            Console.WriteLine("Vui lòng nhập số tài khoản người nhận.");
+            var receiverAccountNumber = Console.ReadLine();
+            var checkAc = model.GetByAccountNumber(receiverAccountNumber);
+            Console.WriteLine("Full Name: " + checkAc.FullName);
+            Console.WriteLine("Vui lòng nhập số tiền cần chuyển: ");
+            var amount = Utility.GetDecimalNumber();
+            Console.WriteLine("Vui lòng nhập nội dung tin nhắn: ");
+            var content = Console.ReadLine();
+            var historyTransaction = new YYTransaction()
+            {
+                Id = Guid.NewGuid().ToString(),
+                Type = YYTransaction.TransactionType.TRANSFER,
+                Amount = amount,
+                Content = content,
+                SenderAccountNumber = Program.currentLoggedInYyAccount.AccountNumber,
+                ReceiverAccountNumber = receiverAccountNumber,
+                Status = YYTransaction.ActiveStatus.DONE
+            };
+            if (model.UpdateTranfers(Program.currentLoggedInYyAccount.AccountNumber, receiverAccountNumber, historyTransaction))
+            {
+                Console.WriteLine("Giao dịch thành công!");
+            }
+            else
+            {
+                Console.WriteLine("Giao dịch thất bại, vui lòng kiểm tra lại.!");
+            }
+
         }
 
         public void Deposit()
@@ -200,5 +226,6 @@ namespace YangYesterday.controller
             Console.ReadLine();
 
         }
+        
     }
 }

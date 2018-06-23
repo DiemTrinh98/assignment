@@ -70,7 +70,7 @@ namespace YangYesterday.model
             DbConnection.Instance().CloseConnection();
             return account;
         }
-        //Transfer
+        
         public YYAccount GetByUsername(string username)
         {
             YYAccount account = null;
@@ -187,6 +187,116 @@ namespace YangYesterday.model
                 cmdInsertTransaction.Parameters.AddWithValue("@status", historyTransaction.Status);
                 insertTransactionResult = cmdInsertTransaction.ExecuteNonQuery();
                 if (updateAccountResult == 1 && insertTransactionResult == 1)
+                {
+                    transaction.Commit();
+                    return true;
+                }
+            }
+            catch (SpringHeroTransactionException e)
+            {
+                transaction.Rollback();
+                return false;
+            }
+
+            DbConnection.Instance().CloseConnection();
+            return false;
+        }
+        
+        public bool UpdateTranfers(string senderAccountNumber, string receiverAccountNumber,
+            YYTransaction historyTransaction)
+        {
+            DbConnection.Instance().OpenConnection();
+            var transaction = DbConnection.Instance().Connection.BeginTransaction();
+
+            try
+            {
+                // 1. Lấy thông tin số dư mới nhất của tài khoản gửi.
+                var queryBalance =
+                    "select balance from accounts where accountNumber = @senderAccountNumber and status = 1";
+                MySqlCommand queryBalanceCommand = new MySqlCommand(queryBalance, DbConnection.Instance().Connection);
+                queryBalanceCommand.Parameters.AddWithValue("@senderAccountNumber", senderAccountNumber);
+                var balanceReader = queryBalanceCommand.ExecuteReader();
+                var isExist = balanceReader.Read();
+                if (!isExist)
+                {
+                    throw new SpringHeroTransactionException("Invalid accountNumber");
+                }
+
+                var currentBalance = balanceReader.GetDecimal("balance");
+                balanceReader.Close();
+                if (historyTransaction.Type != YYTransaction.TransactionType.TRANSFER)
+                {
+                    throw new SpringHeroTransactionException("Invalid transaction type!");
+                }
+
+                if (historyTransaction.Type == YYTransaction.TransactionType.TRANSFER &&
+                    historyTransaction.Amount > currentBalance)
+                {
+                    throw new SpringHeroTransactionException("Not enough money!");
+                }
+                
+                //1. Lấy thông tin số dư mới nhất của tài khoản người nhận
+                var queryBalanceReceiver =
+                    "select balance from accounts where accountNumber = @receiverAccountNumber and status = 1";
+                MySqlCommand queryBalanceCommandReceiver = new MySqlCommand(queryBalanceReceiver, DbConnection.Instance().Connection);
+                queryBalanceCommandReceiver.Parameters.AddWithValue("@receiverAccountNumber", receiverAccountNumber);
+                var balanceReaderReceiver = queryBalanceCommandReceiver.ExecuteReader();
+                var isExistReceiver = balanceReaderReceiver.Read();
+                if (!isExistReceiver)
+                {
+                    throw new SpringHeroTransactionException("Invalid accountNumber");
+                }
+
+                var currentBalanceReceiver = balanceReaderReceiver.GetDecimal("balance");
+                balanceReaderReceiver.Close();
+                if (historyTransaction.Type != YYTransaction.TransactionType.TRANSFER)
+                {
+                    throw new SpringHeroTransactionException("Invalid transaction type!");
+                }
+                
+                //2. Tính toán lại số tiền tài khoản người gửi và người nhận.
+                    currentBalance -= historyTransaction.Amount;
+                    currentBalanceReceiver += historyTransaction.Amount;
+                
+                
+                // 3. Update số dư vào dat1abase tài khoản người gửi.
+                var updateAccountsender = 0;
+                var queryUpdateAccountsender =
+                    "update accounts set balance = @balance where accountNumber = @senderAccountNumber and status = 1";
+                var cmdUpdateAccountsender =
+                    new MySqlCommand(queryUpdateAccountsender, DbConnection.Instance().Connection);
+                cmdUpdateAccountsender.Parameters.AddWithValue("@senderAccountNumber", senderAccountNumber);
+                cmdUpdateAccountsender.Parameters.AddWithValue("@balance", currentBalance);
+                updateAccountsender = cmdUpdateAccountsender.ExecuteNonQuery();
+                
+                // 4. Update  số dư vào dat1abase tài khoản người nhận.
+                var updateAccountreceiver = 0;
+                var queryUpdateAccountreceiver =
+                    "update accounts set balance = @balance where accountNumber = @receiverAccountNumber and status = 1";
+                var cmdUpdateAccountreceiver =
+                    new MySqlCommand(queryUpdateAccountreceiver, DbConnection.Instance().Connection);
+                cmdUpdateAccountreceiver.Parameters.AddWithValue("@receiverAccountNumber", receiverAccountNumber);
+                cmdUpdateAccountreceiver.Parameters.AddWithValue("@balance", currentBalanceReceiver);
+                updateAccountreceiver = cmdUpdateAccountreceiver.ExecuteNonQuery();
+
+                // 5. Lưu thông tin transaction vào bảng transaction.
+                var insertTransactionResult = 0;
+                var queryInsertTransaction = "insert into transactions " +
+                                             "(id, amount, content, senderAccountNumber, receiverAccountNumber, type, status) " +
+                                             "values (@id,, @amount, @content, @senderAccountNumber, @receiverAccountNumber, @type @status)";
+                var cmdInsertTransaction =
+                    new MySqlCommand(queryInsertTransaction, DbConnection.Instance().Connection);
+                cmdInsertTransaction.Parameters.AddWithValue("@id", historyTransaction.Id);
+                cmdInsertTransaction.Parameters.AddWithValue("@amount", historyTransaction.Amount);
+                cmdInsertTransaction.Parameters.AddWithValue("@content", historyTransaction.Content);
+                cmdInsertTransaction.Parameters.AddWithValue("@senderAccountNumber",
+                    historyTransaction.SenderAccountNumber);
+                cmdInsertTransaction.Parameters.AddWithValue("@receiverAccountNumber",
+                    historyTransaction.ReceiverAccountNumber);
+                cmdInsertTransaction.Parameters.AddWithValue("@type", historyTransaction.Type);
+                cmdInsertTransaction.Parameters.AddWithValue("@status", historyTransaction.Status);
+                insertTransactionResult = cmdInsertTransaction.ExecuteNonQuery();
+                if (updateAccountsender == 1 && updateAccountreceiver == 1 && insertTransactionResult == 1)
                 {
                     transaction.Commit();
                     return true;
