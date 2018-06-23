@@ -1,10 +1,10 @@
 ﻿{
   "version": "1.0.0",
   "restore": {
-    "projectUniqueName": "C:\\Users\\hathu\\Downloads\\YangYesterday1\\YangYesterday\\YangYesterday\\YangYesterday.csproj",
+    "projectUniqueName": "D:\\Dowload\\YangYesterday1\\YangYesterday\\YangYesterday\\YangYesterday.csproj",
     "projectName": "YangYesterday",
-    "projectPath": "C:\\Users\\hathu\\Downloads\\YangYesterday1\\YangYesterday\\YangYesterday\\YangYesterday.csproj",
-    "outputPath": "C:\\Users\\hathu\\Downloads\\YangYesterday1\\YangYesterday\\YangYesterday\\obj\\",
+    "projectPath": "D:\\Dowload\\YangYesterday1\\YangYesterday\\YangYesterday\\YangYesterday.csproj",
+    "outputPath": "D:\\Dowload\\YangYesterday1\\YangYesterday\\YangYesterday\\obj\\",
     "projectStyle": "PackageReference",
     "fallbackFolders": [
       "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
